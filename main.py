@@ -2,20 +2,42 @@ import telebot
 import openai
 import config
 import re
+import json
 
 # Initialize bot
 bot = telebot.TeleBot(config.BOT_TOKEN)
 openai.api_key = config.OPENAI_API_KEY
 
-# Dictionary to track user warnings
-warnings = {}
+# Load warnings from file
+def load_warnings():
+    try:
+        with open("data.json", "r") as file:
+            return json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
 
-# List of abusive words (you can expand this)
-abusive_words = ["abuse1", "abuse2", "fight", "insult"]  # Add more words
+# Save warnings to file
+def save_warnings():
+    with open("data.json", "w") as file:
+        json.dump(warnings, file)
+
+warnings = load_warnings()
+
+# List of abusive words (expand as needed)
+abusive_words = ["abuse1", "abuse2", "fight", "insult"]
 
 # Function to detect abusive language
 def contains_abuse(text):
     return any(re.search(rf"\b{word}\b", text, re.IGNORECASE) for word in abusive_words)
+
+# Function to check if the bot is an admin
+def is_bot_admin(chat_id):
+    try:
+        bot_info = bot.get_me()
+        admins = bot.get_chat_administrators(chat_id)
+        return any(admin.user.id == bot_info.id for admin in admins)
+    except Exception:
+        return False
 
 # Function to handle messages
 @bot.message_handler(func=lambda message: True)
@@ -27,15 +49,13 @@ def handle_message(message):
         
         # Check for abuse
         if contains_abuse(text):
-            if user_id not in warnings:
-                warnings[user_id] = 1
-            else:
-                warnings[user_id] += 1
+            warnings[user_id] = warnings.get(user_id, 0) + 1
+            save_warnings()
             
             bot.reply_to(message, f"⚠️ Warning {warnings[user_id]}: Please avoid abusive language.")
             
-            # Kick user if they exceed 3 warnings (modify if needed)
-            if warnings[user_id] >= 3:
+            # Kick user if they exceed 3 warnings
+            if warnings[user_id] >= 3 and is_bot_admin(chat_id):
                 bot.kick_chat_member(chat_id, user_id)
                 bot.send_message(chat_id, f"🚨 User {message.from_user.first_name} was removed due to repeated violations.")
             return
