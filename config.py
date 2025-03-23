@@ -1,1 +1,1 @@
-BOT_TOKEN = "your-telegram-bot-token"
+BOT_TOKEN = "7510978466:AAEsCri18xQgld3bOGdIYCCueJVHAAxpfY0"
