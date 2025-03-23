@@ -1,2 +1,2 @@
 pyTelegramBotAPI
-openai
+requests
